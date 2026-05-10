@@ -1,0 +1,1293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>INS · LIVE NAVIGATION SYSTEM</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Rajdhani:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#050a0f; --bg2:#080e15; --bg3:#0d1520; --panel:#0a1018;
+  --border:#0e2030; --border2:#1a3045;
+  --cyan:#00e5ff; --cyan-dim:rgba(0,229,255,0.12); --cyan-glow:rgba(0,229,255,0.35);
+  --green:#00ff9d; --green-dim:rgba(0,255,157,0.1);
+  --orange:#ff6b35; --orange-dim:rgba(255,107,53,0.12);
+  --red:#ff2d55; --yellow:#ffd60a;
+  --text:#c8dae8; --text-dim:#4a6a80; --text-bright:#e8f4ff;
+  --rc:#00e5ff; --pc:#ff6b35; --yc:#00ff9d;
+  --font-mono:'Space Mono',monospace; --font-ui:'Rajdhani',sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--text);font-family:var(--font-ui);font-size:13px;height:100vh;display:flex;flex-direction:column;overflow:hidden;}
+header{display:flex;align-items:center;gap:16px;padding:0 18px;height:48px;background:var(--bg2);border-bottom:1px solid var(--border);flex-shrink:0;}
+.logo{font-family:var(--font-mono);font-size:15px;font-weight:700;color:var(--cyan);letter-spacing:4px;text-shadow:0 0 20px var(--cyan-glow);}
+.logo-sep{color:var(--border2);font-size:18px;}
+.logo-sub{font-family:var(--font-ui);font-size:11px;letter-spacing:3px;color:var(--text-dim);font-weight:600;}
+.status-indicators{display:flex;gap:14px;margin-left:16px;}
+.indicator{display:flex;align-items:center;gap:6px;font-size:11px;letter-spacing:2px;font-weight:600;color:var(--text-dim);}
+.dot{width:7px;height:7px;border-radius:50%;background:#1a3045;transition:all .3s;}
+.dot.active{background:var(--green);box-shadow:0 0 8px var(--green);}
+.dot.warn{background:var(--yellow);box-shadow:0 0 8px var(--yellow);}
+.header-stats{display:flex;gap:18px;margin-left:auto;font-family:var(--font-mono);font-size:11px;}
+.stat-item{display:flex;gap:5px;}
+.stat-label{color:var(--text-dim);} .stat-val{color:var(--cyan);}
+.connect-btn{margin-left:12px;padding:7px 20px;background:transparent;border:1.5px solid var(--cyan);color:var(--cyan);font-family:var(--font-ui);font-size:12px;font-weight:700;letter-spacing:3px;cursor:pointer;transition:all .2s;clip-path:polygon(8px 0%,100% 0%,calc(100% - 8px) 100%,0% 100%);}
+.connect-btn:hover{background:var(--cyan-dim);box-shadow:0 0 16px var(--cyan-glow);}
+.connect-btn.connected{border-color:var(--green);color:var(--green);}
+.main{display:grid;grid-template-columns:270px 1fr 270px;grid-template-rows:1fr 165px;flex:1;overflow:hidden;gap:1px;background:var(--border);}
+.left-panel{background:var(--panel);display:flex;flex-direction:column;grid-row:1/2;overflow-y:auto;overflow-x:hidden;}
+.section-title{font-size:10px;letter-spacing:3px;color:var(--text-dim);font-weight:700;padding:10px 14px 7px;border-bottom:1px solid var(--border);}
+.angle-row{padding:10px 14px;border-bottom:1px solid var(--border);}
+.angle-label{display:flex;justify-content:space-between;margin-bottom:7px;}
+.angle-name{font-size:11px;letter-spacing:3px;font-weight:700;}
+.angle-val{font-family:var(--font-mono);font-size:13px;}
+.gauge-track{position:relative;height:4px;background:var(--bg3);border-radius:2px;margin-bottom:4px;}
+.gauge-fill{position:absolute;height:100%;border-radius:2px;}
+.gauge-center{position:absolute;left:50%;top:-3px;width:1px;height:10px;background:var(--border2);}
+.gauge-cursor{position:absolute;top:-5px;width:3px;height:14px;border-radius:1px;transform:translateX(-50%);}
+.mini-graph{height:34px;position:relative;margin-top:3px;}
+.mini-graph canvas{width:100%;height:100%;display:block;}
+.imu-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1px;background:var(--border);}
+.imu-cell{background:var(--panel);padding:8px 10px;text-align:center;}
+.imu-axis{font-size:9px;letter-spacing:2px;color:var(--text-dim);font-weight:700;}
+.imu-value{font-family:var(--font-mono);font-size:11px;color:var(--text-bright);margin-top:3px;}
+.controls-section{padding:10px 14px;}
+.controls-title{font-size:10px;letter-spacing:3px;color:var(--text-dim);font-weight:700;margin-bottom:8px;}
+.btn-row{display:flex;gap:5px;margin-bottom:5px;}
+.ctrl-btn{flex:1;padding:7px 5px;background:transparent;border:1px solid var(--border2);color:var(--text);font-family:var(--font-ui);font-size:10px;font-weight:700;letter-spacing:1.5px;cursor:pointer;transition:all .2s;clip-path:polygon(4px 0%,100% 0%,calc(100% - 4px) 100%,0% 100%);}
+.ctrl-btn:hover{border-color:var(--cyan);color:var(--cyan);background:var(--cyan-dim);}
+.ctrl-btn.danger:hover{border-color:var(--red);color:var(--red);background:rgba(255,45,85,.1);}
+.ctrl-btn.warning{border-color:var(--orange);color:var(--orange);}
+.ctrl-btn.warning:hover{background:var(--orange-dim);}
+.ctrl-btn.active{border-color:var(--green);color:var(--green);background:var(--green-dim);}
+.ctrl-btn.cal-running{border-color:var(--yellow);color:var(--yellow);background:rgba(255,214,10,.08);animation:pulse .7s ease infinite alternate;}
+/* Betaflight-style reset Z button — matches BF's orange/amber "Reset Z-axis" */
+.ctrl-btn.reset-z{border-color:var(--yellow);color:var(--yellow);}
+.ctrl-btn.reset-z:hover{background:rgba(255,214,10,.12);box-shadow:0 0 8px rgba(255,214,10,0.3);}
+.ctrl-btn.reset-z.flash{border-color:var(--green);color:var(--green);background:var(--green-dim);animation:zflash .6s ease forwards;}
+@keyframes zflash{0%{opacity:1;}50%{opacity:.5;}100%{opacity:1;}}
+@keyframes pulse{from{opacity:1;}to{opacity:.4;}}
+.center-panel{background:var(--bg);position:relative;display:flex;flex-direction:column;overflow:hidden;}
+.view-tabs{display:flex;gap:1px;background:var(--border);flex-shrink:0;}
+.view-tab{padding:9px 18px;background:var(--panel);font-size:10px;letter-spacing:3px;font-weight:700;color:var(--text-dim);cursor:pointer;transition:all .2s;}
+.view-tab:hover{color:var(--text);background:var(--bg3);}
+.view-tab.active{color:var(--cyan);background:var(--bg);border-bottom:2px solid var(--cyan);}
+#c3d{flex:1;width:100%;display:block;}
+.no-signal{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;pointer-events:none;}
+.no-signal-text{font-family:var(--font-mono);font-size:13px;letter-spacing:4px;color:var(--text-dim);margin-bottom:10px;}
+.no-signal-sub{font-size:10px;letter-spacing:2px;color:#2a4050;}
+.att-overlay{position:absolute;bottom:10px;left:10px;font-family:var(--font-mono);font-size:10px;color:var(--text-dim);line-height:1.9;pointer-events:none;background:rgba(5,10,15,0.75);padding:6px 10px;border-left:2px solid rgba(0,229,255,0.3);}
+.ov-v{color:var(--cyan);}
+.corner-tl,.corner-br{position:absolute;width:14px;height:14px;pointer-events:none;}
+.corner-tl{top:38px;left:4px;border-top:1px solid rgba(0,229,255,0.4);border-left:1px solid rgba(0,229,255,0.4);}
+.corner-br{bottom:4px;right:4px;border-bottom:1px solid rgba(0,229,255,0.4);border-right:1px solid rgba(0,229,255,0.4);}
+.right-panel{background:var(--panel);display:flex;flex-direction:column;grid-row:1/2;overflow-y:auto;}
+.data-section{border-bottom:1px solid var(--border);}
+.data-header{padding:9px 14px;font-size:10px;letter-spacing:3px;font-weight:700;color:var(--text-dim);border-bottom:1px solid var(--border);}
+.data-row{display:flex;justify-content:space-between;align-items:center;padding:7px 14px;border-bottom:1px solid rgba(14,32,48,.5);}
+.data-label{font-size:11px;color:var(--text-dim);letter-spacing:1px;}
+.data-value{font-family:var(--font-mono);font-size:11px;color:var(--text-bright);}
+.triple-val{display:flex;gap:3px;font-family:var(--font-mono);font-size:11px;}
+.tv-x{color:var(--rc);} .tv-y{color:var(--pc);} .tv-z{color:var(--yc);}
+.bottom-panel{grid-column:1/4;background:var(--panel);display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:1px;background:var(--border);}
+.graph-cell{background:var(--panel);display:flex;flex-direction:column;padding:7px 10px;}
+.graph-title{font-size:9px;letter-spacing:3px;font-weight:700;color:var(--text-dim);margin-bottom:4px;display:flex;justify-content:space-between;}
+.graph-canvas-wrap{flex:1;position:relative;}
+.graph-canvas-wrap canvas{width:100%;height:100%;display:block;}
+.graph-current{font-family:var(--font-mono);font-size:13px;font-weight:700;}
+#cal-overlay{display:none;position:fixed;inset:0;background:rgba(5,10,15,.88);z-index:9000;align-items:center;justify-content:center;}
+#cal-overlay.show{display:flex;}
+.cal-box{background:var(--panel);border:1px solid var(--cyan);padding:30px 38px;text-align:center;clip-path:polygon(12px 0%,100% 0%,calc(100% - 12px) 100%,0% 100%);min-width:340px;}
+.cal-title{font-family:var(--font-mono);font-size:13px;letter-spacing:4px;color:var(--cyan);margin-bottom:12px;}
+.cal-msg{font-size:12px;letter-spacing:1.5px;color:var(--text-dim);margin-bottom:18px;line-height:1.9;white-space:pre-line;}
+.cal-bar-wrap{height:5px;background:var(--bg3);border-radius:3px;overflow:hidden;margin-bottom:18px;}
+.cal-bar{height:100%;background:var(--cyan);width:0%;transition:width .08s linear;}
+.cal-close{padding:8px 24px;background:transparent;border:1px solid var(--border2);color:var(--text);font-family:var(--font-ui);font-size:11px;letter-spacing:2px;cursor:pointer;}
+.cal-close:hover{border-color:var(--cyan);color:var(--cyan);}
+::-webkit-scrollbar{width:3px;}::-webkit-scrollbar-track{background:var(--bg);}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px;}
+body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,0,0,0.02) 3px,rgba(0,0,0,0.02) 4px);pointer-events:none;z-index:9999;}
+</style>
+</head>
+<body>
+<header>
+  <span class="logo">INS</span><span class="logo-sep">·</span><span class="logo-sub">LIVE NAVIGATION SYSTEM</span>
+  <div class="status-indicators">
+    <div class="indicator"><div class="dot" id="dot-serial"></div>SERIAL</div>
+    <div class="indicator"><div class="dot" id="dot-ekf"></div>EKF</div>
+    <div class="indicator"><div class="dot" id="dot-mag"></div>MAG</div>
+    <div class="indicator"><div class="dot" id="dot-baro"></div>BARO</div>
+  </div>
+  <div class="header-stats">
+    <div class="stat-item"><span class="stat-label">pkts:</span><span class="stat-val" id="pkt-count">—</span></div>
+    <div class="stat-item"><span class="stat-label">crc_err:</span><span class="stat-val" id="crc-count">0</span></div>
+    <div class="stat-item"><span class="stat-label">hz:</span><span class="stat-val" id="hz-val">—</span></div>
+  </div>
+  <button class="connect-btn" id="connect-btn" onclick="toggleConnect()">CONNECT</button>
+</header>
+
+<div class="main">
+  <!-- LEFT -->
+  <div class="left-panel">
+    <div class="section-title">ATTITUDE ANGLES</div>
+    <div class="angle-row">
+      <div class="angle-label"><span class="angle-name" style="color:var(--rc)">ROLL</span><span class="angle-val" id="v-roll" style="color:var(--rc)">+0.00°</span></div>
+      <div class="gauge-track"><div class="gauge-center"></div><div class="gauge-fill" id="gf-roll" style="background:var(--rc);opacity:.5"></div><div class="gauge-cursor" id="gc-roll" style="background:var(--rc);left:50%"></div></div>
+      <div class="mini-graph"><canvas id="m-roll"></canvas></div>
+    </div>
+    <div class="angle-row">
+      <div class="angle-label"><span class="angle-name" style="color:var(--pc)">PITCH</span><span class="angle-val" id="v-pitch" style="color:var(--pc)">+0.00°</span></div>
+      <div class="gauge-track"><div class="gauge-center"></div><div class="gauge-fill" id="gf-pitch" style="background:var(--pc);opacity:.5"></div><div class="gauge-cursor" id="gc-pitch" style="background:var(--pc);left:50%"></div></div>
+      <div class="mini-graph"><canvas id="m-pitch"></canvas></div>
+    </div>
+    <div class="angle-row">
+      <div class="angle-label"><span class="angle-name" style="color:var(--yc)">YAW / HEADING</span><span class="angle-val" id="v-yaw" style="color:var(--yc)">000.0°</span></div>
+      <div class="gauge-track"><div class="gauge-fill" id="gf-yaw" style="background:var(--yc);opacity:.5;left:0"></div><div class="gauge-cursor" id="gc-yaw" style="background:var(--yc);left:0%"></div></div>
+      <div class="mini-graph"><canvas id="m-yaw"></canvas></div>
+    </div>
+    <div class="section-title">GYRO RAW (°/S)</div>
+    <div class="imu-grid">
+      <div class="imu-cell"><div class="imu-axis" style="color:var(--rc)">GX</div><div class="imu-value" id="v-gx">—</div></div>
+      <div class="imu-cell"><div class="imu-axis" style="color:var(--pc)">GY</div><div class="imu-value" id="v-gy">—</div></div>
+      <div class="imu-cell"><div class="imu-axis" style="color:var(--yc)">GZ</div><div class="imu-value" id="v-gz">—</div></div>
+    </div>
+    <div class="section-title">ACCEL RAW (g)</div>
+    <div class="imu-grid">
+      <div class="imu-cell"><div class="imu-axis" style="color:var(--rc)">AX</div><div class="imu-value" id="v-ax">—</div></div>
+      <div class="imu-cell"><div class="imu-axis" style="color:var(--pc)">AY</div><div class="imu-value" id="v-ay">—</div></div>
+      <div class="imu-cell"><div class="imu-axis" style="color:var(--yc)">AZ</div><div class="imu-value" id="v-az">—</div></div>
+    </div>
+    <div class="controls-section" style="margin-top:auto">
+      <div class="controls-title">CALIBRATION & CONTROL</div>
+      <div class="btn-row">
+        <button class="ctrl-btn" id="b-accel" onclick="calAccel()">CAL ACCEL</button>
+        <button class="ctrl-btn" id="b-gyro"  onclick="calGyro()">CAL GYRO</button>
+      </div>
+      <div class="btn-row">
+        <button class="ctrl-btn" id="b-mag" onclick="calMag()">CAL MAG</button>
+        <!-- Betaflight-style Reset Z-axis button -->
+        <button class="ctrl-btn reset-z" id="b-resetz" onclick="resetZAxis()">RESET Z</button>
+      </div>
+      <div class="btn-row">
+        <button class="ctrl-btn danger" onclick="resetAll()">RESET ALL</button>
+        <button class="ctrl-btn" id="b-sim" onclick="toggleSim()">SIMULATE</button>
+      </div>
+      <div style="margin-top:8px;border-top:1px solid var(--border);padding-top:8px;">
+        <div class="controls-title" style="margin-bottom:6px">DISPLAY SMOOTHING</div>
+        <div style="display:flex;align-items:center;gap:8px;padding:0 0 4px">
+          <span style="font-size:10px;color:var(--text-dim);letter-spacing:1px;width:40px">FAST</span>
+          <input type="range" id="lpf-slider" min="1" max="9" value="4" step="1"
+            style="flex:1;accent-color:var(--cyan);height:3px;cursor:pointer"
+            oninput="setLpfAlpha(this.value)">
+          <span style="font-size:10px;color:var(--text-dim);letter-spacing:1px;width:50px;text-align:right">SMOOTH</span>
+        </div>
+        <div style="text-align:center;font-family:var(--font-mono);font-size:10px;color:var(--cyan)" id="lpf-label">α = 0.35 (roll/pitch)</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CENTER -->
+  <div class="center-panel">
+    <div class="view-tabs">
+      <div class="view-tab active" onclick="setView('3d')">3D ATTITUDE</div>
+      <div class="view-tab" onclick="setView('horizon')">HORIZON</div>
+      <div class="view-tab" onclick="setView('compass')">COMPASS</div>
+    </div>
+    <canvas id="c3d"></canvas>
+    <div class="no-signal" id="no-sig">
+      <div class="no-signal-text">NO SIGNAL</div>
+      <div class="no-signal-sub">CONNECT A WEB SERIAL PORT TO BEGIN</div>
+      <div class="no-signal-sub" style="margin-top:6px">STM32 APPEARS AS USB CDC VIRTUAL COM</div>
+    </div>
+    <div class="att-overlay">ROLL&nbsp; <span class="ov-v" id="ov-r">---</span>°<br>PITCH <span class="ov-v" id="ov-p">---</span>°<br>YAW&nbsp;&nbsp; <span class="ov-v" id="ov-y">---</span>°</div>
+    <div class="corner-tl"></div><div class="corner-br"></div>
+  </div>
+
+  <!-- RIGHT -->
+  <div class="right-panel">
+    <div class="data-section">
+      <div class="data-header">POSITION NED</div>
+      <div class="data-row"><span class="data-label">North</span><span class="data-value" id="r-n">—</span></div>
+      <div class="data-row"><span class="data-label">East</span><span class="data-value" id="r-e">—</span></div>
+      <div class="data-row"><span class="data-label">Down</span><span class="data-value" id="r-d">—</span></div>
+      <div class="data-row"><span class="data-label">Alt (baro)</span><span class="data-value" id="r-alt">—</span></div>
+    </div>
+    <div class="data-section">
+      <div class="data-header">VELOCITY NED (M/S)</div>
+      <div class="data-row"><span class="data-label">Vn</span><span class="data-value" id="r-vn">—</span></div>
+      <div class="data-row"><span class="data-label">Ve</span><span class="data-value" id="r-ve">—</span></div>
+      <div class="data-row"><span class="data-label">Vd</span><span class="data-value" id="r-vd">—</span></div>
+      <div class="data-row"><span class="data-label">Speed</span><span class="data-value" id="r-spd" style="color:var(--cyan)">—</span></div>
+    </div>
+    <div class="data-section">
+      <div class="data-header">IMU CALIBRATED</div>
+      <div class="data-row"><span class="data-label">Gx Gy Gz</span><div class="triple-val"><span class="tv-x" id="c-gx">—</span><span style="color:var(--text-dim)">│</span><span class="tv-y" id="c-gy">—</span><span style="color:var(--text-dim)">│</span><span class="tv-z" id="c-gz">—</span></div></div>
+      <div class="data-row"><span class="data-label">Ax Ay Az</span><div class="triple-val"><span class="tv-x" id="c-ax">—</span><span style="color:var(--text-dim)">│</span><span class="tv-y" id="c-ay">—</span><span style="color:var(--text-dim)">│</span><span class="tv-z" id="c-az">—</span></div></div>
+      <div class="data-row"><span class="data-label">|A| (g)</span><span class="data-value" id="r-am" style="color:var(--green)">—</span></div>
+      <div class="data-row"><span class="data-label">|G| (°/s)</span><span class="data-value" id="r-gm">—</span></div>
+    </div>
+    <div class="data-section">
+      <div class="data-header">GYRO BIAS (CAL)</div>
+      <div class="data-row"><span class="data-label">Bx By Bz</span><div class="triple-val"><span class="tv-x" id="bx">0.000</span><span style="color:var(--text-dim)">│</span><span class="tv-y" id="by">0.000</span><span style="color:var(--text-dim)">│</span><span class="tv-z" id="bz">0.000</span></div></div>
+    </div>
+  </div>
+
+  <!-- BOTTOM GRAPHS -->
+  <div class="bottom-panel">
+    <div class="graph-cell"><div class="graph-title"><span>ROLL (°)</span><span class="graph-current" id="gg-r" style="color:var(--rc)">—</span></div><div class="graph-canvas-wrap"><canvas id="g-roll"></canvas></div></div>
+    <div class="graph-cell"><div class="graph-title"><span>PITCH (°)</span><span class="graph-current" id="gg-p" style="color:var(--pc)">—</span></div><div class="graph-canvas-wrap"><canvas id="g-pitch"></canvas></div></div>
+    <div class="graph-cell"><div class="graph-title"><span>YAW (°)</span><span class="graph-current" id="gg-y" style="color:var(--yc)">—</span></div><div class="graph-canvas-wrap"><canvas id="g-yaw"></canvas></div></div>
+    <div class="graph-cell"><div class="graph-title"><span>|ACCEL| (g)</span><span class="graph-current" id="gg-a" style="color:var(--green)">—</span></div><div class="graph-canvas-wrap"><canvas id="g-amag"></canvas></div></div>
+  </div>
+</div>
+
+<!-- CAL MODAL -->
+<div id="cal-overlay">
+  <div class="cal-box">
+    <div class="cal-title" id="cal-t">CALIBRATION</div>
+    <div class="cal-msg" id="cal-m">...</div>
+    <div class="cal-bar-wrap"><div class="cal-bar" id="cal-b"></div></div>
+    <button class="cal-close" onclick="closeCalModal()">DISMISS</button>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+// BETAFLIGHT-QUALITY QUATERNION MATH
+// ═══════════════════════════════════════════════════════════════
+const Q = {
+  id: ()=>({w:1,x:0,y:0,z:0}),
+
+  // ZYX Euler → quaternion (degrees)
+  // Convention: roll=X, pitch=Y, yaw=Z  (matches Betaflight body frame)
+  fromEuler(roll, pitch, yaw) {
+    const r = roll  * Math.PI / 360;
+    const p = pitch * Math.PI / 360;
+    const y = yaw   * Math.PI / 360;
+    const cr=Math.cos(r), sr=Math.sin(r);
+    const cp=Math.cos(p), sp=Math.sin(p);
+    const cy=Math.cos(y), sy=Math.sin(y);
+    return {
+      w:  cr*cp*cy + sr*sp*sy,
+      x:  sr*cp*cy - cr*sp*sy,
+      y:  cr*sp*cy + sr*cp*sy,
+      z:  cr*cp*sy - sr*sp*cy
+    };
+  },
+
+  // Quaternion → ZYX Euler (degrees)
+  // roll ∈ [−180, +180], pitch ∈ [−90, +90], yaw ∈ [0, 360)
+  toEuler(q) {
+    const {w,x,y,z} = q;
+    // Roll (X-axis)
+    const sinr_cosp = 2*(w*x + y*z);
+    const cosr_cosp = 1 - 2*(x*x + y*y);
+    const roll = Math.atan2(sinr_cosp, cosr_cosp) * 180/Math.PI;
+    // Pitch (Y-axis) — clamped for gimbal-lock safety
+    const sinp = 2*(w*y - z*x);
+    const pitch = (Math.abs(sinp) >= 1)
+      ? Math.sign(sinp) * 90
+      : Math.asin(Math.max(-1, Math.min(1, sinp))) * 180/Math.PI;
+    // Yaw (Z-axis) → wrapped to [0, 360)
+    const siny_cosp = 2*(w*z + x*y);
+    const cosy_cosp = 1 - 2*(y*y + z*z);
+    let yaw = Math.atan2(siny_cosp, cosy_cosp) * 180/Math.PI;
+    if (yaw < 0) yaw += 360;
+    return {roll, pitch, yaw};
+  },
+
+  // Spherical linear interpolation — key to Betaflight-like smooth display
+  slerp(a, b, t) {
+    let dot = a.w*b.w + a.x*b.x + a.y*b.y + a.z*b.z;
+    if (dot < 0) { b = {w:-b.w,x:-b.x,y:-b.y,z:-b.z}; dot = -dot; }
+    if (dot > 0.9995) return this.norm({
+      w: a.w + t*(b.w-a.w), x: a.x + t*(b.x-a.x),
+      y: a.y + t*(b.y-a.y), z: a.z + t*(b.z-a.z)
+    });
+    const theta  = Math.acos(Math.min(1, dot));
+    const stheta = Math.sin(theta);
+    const s0 = Math.sin((1-t)*theta) / stheta;
+    const s1 = Math.sin(   t *theta) / stheta;
+    return { w:s0*a.w+s1*b.w, x:s0*a.x+s1*b.x, y:s0*a.y+s1*b.y, z:s0*a.z+s1*b.z };
+  },
+
+  norm(q) {
+    const n = Math.sqrt(q.w*q.w + q.x*q.x + q.y*q.y + q.z*q.z);
+    if (n < 1e-10) return {w:1,x:0,y:0,z:0};
+    return {w:q.w/n, x:q.x/n, y:q.y/n, z:q.z/n};
+  },
+
+  // Hamilton product: q1 * q2
+  mul(a, b) {
+    return {
+      w: a.w*b.w - a.x*b.x - a.y*b.y - a.z*b.z,
+      x: a.w*b.x + a.x*b.w + a.y*b.z - a.z*b.y,
+      y: a.w*b.y - a.x*b.z + a.y*b.w + a.z*b.x,
+      z: a.w*b.z + a.x*b.y - a.y*b.x + a.z*b.w
+    };
+  },
+
+  // Conjugate (inverse for unit quaternion)
+  conj(q) { return {w:q.w, x:-q.x, y:-q.y, z:-q.z}; },
+
+  // Rotate vector by quaternion: v' = q v q*
+  rot(q, v) {
+    const {w,x,y,z} = q;
+    const {x:vx, y:vy, z:vz} = v;
+    const t2 = 2*(y*vz - z*vy);
+    const t3 = 2*(z*vx - x*vz);
+    const t4 = 2*(x*vy - y*vx);
+    return {
+      x: vx + w*t2 + y*t4 - z*t3,
+      y: vy + w*t3 + z*t2 - x*t4,
+      z: vz + w*t4 + x*t3 - y*t2
+    };
+  }
+};
+
+// ═══════════════════════════════════════════════════════════════
+// LOW-PASS FILTER — single-pole IIR
+// ═══════════════════════════════════════════════════════════════
+class LPF {
+  constructor(alpha = 0.35) { this.a = alpha; this.v = null; }
+  update(x) {
+    if (this.v === null) { this.v = x; return x; }
+    this.v += this.a * (x - this.v);
+    return this.v;
+  }
+  reset(x) { this.v = x; }
+}
+
+// ── ANGLE LPF (wrap-safe) ──────────────────────────────────────
+// Plain IIR on Euler angles causes "odd transitions" / drift because
+// angles wrap:  roll ±180°, pitch ±90° (not continuous).
+// When the sensor crosses ±180 (e.g. +179 → -179), a naive filter
+// sweeps 358° through 0 over many frames — this IS the "circular value
+// confusion" bug.  Fix: filter sin and cos separately, then atan2.
+// This is mathematically correct for any circular quantity.
+class AngleLPF {
+  constructor(alpha = 0.35) {
+    this.a  = alpha;
+    this.fs = null;   // filtered sin
+    this.fc = null;   // filtered cos
+  }
+  update(deg) {
+    const r  = deg * Math.PI / 180;
+    const s  = Math.sin(r);
+    const c  = Math.cos(r);
+    if (this.fs === null) { this.fs = s; this.fc = c; }
+    else {
+      this.fs += this.a * (s - this.fs);
+      this.fc += this.a * (c - this.fc);
+    }
+    return Math.atan2(this.fs, this.fc) * 180 / Math.PI;
+    // Returns [-180, +180] — correct for roll & pitch
+  }
+  reset(deg) {
+    const r = deg * Math.PI / 180;
+    this.fs = Math.sin(r);
+    this.fc = Math.cos(r);
+  }
+}
+
+// ── ANGLE LPF for yaw [0, 360) output ─────────────────────────
+class YawLPF extends AngleLPF {
+  update(deg) {
+    let v = super.update(deg);
+    if (v < 0) v += 360;
+    return v;
+  }
+  reset(deg) {
+    super.reset(deg);
+  }
+}
+
+const lpf = {
+  // AngleLPF for Euler angles — wrap-safe, no "sweep through 0" glitches
+  // α=0.40 at 10 Hz → ~150 ms time constant (snappy like Betaflight)
+  roll:  new AngleLPF(0.40),
+  pitch: new AngleLPF(0.40),
+  yaw:   new YawLPF(0.75),   // high alpha — yaw is already slow gyro integration
+  // Plain IIR for gyro/accel magnitudes (no wrap issue on these)
+  gx: new LPF(0.25), gy: new LPF(0.25), gz: new LPF(0.25),
+  ax: new LPF(0.30), ay: new LPF(0.30), az: new LPF(0.30),
+};
+
+function filterYaw(deg) { return lpf.yaw.update(deg); }
+
+// ═══════════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════════
+const S = {
+  // Filtered display values
+  roll:0, pitch:0, yaw:0,
+  // Raw sensor values
+  gx:0, gy:0, gz:0,
+  ax:0, ay:0, az:1,
+  // Quaternions: tQ = latest target, rQ = smoothly rendered (slerped)
+  tQ: Q.id(), rQ: Q.id(),
+
+  // ── BETAFLIGHT RESET Z-AXIS ──────────────────────────────────
+  // Betaflight stores the raw sensor heading at the moment of reset,
+  // then subtracts it on every frame. This is exactly what we do.
+  // yawOffset is the sensor's yaw value at the last "Reset Z" press.
+  // displayYaw = wrapAngle(sensorYaw - yawOffset)
+  yawOffset: 0,
+
+  // Gyro bias accumulated during calibration
+  gyroBias: {x:0, y:0, z:0},
+  calSamples: [], calActive: false,
+
+  connected: false, simulating: false,
+  pkts: 0, hz: 0, lastT: 0,
+  view: '3d'
+};
+
+// Slerp display alpha — 0.30 at 60fps gives ~80ms visual lag
+// Snappier than 0.22 to properly show fast pitch changes
+const RENDER_ALPHA = 0.30;
+
+// ═══════════════════════════════════════════════════════════════
+// HISTORY RING BUFFERS
+// ═══════════════════════════════════════════════════════════════
+const HL = 300;
+const H = {
+  roll:  new Float32Array(HL),
+  pitch: new Float32Array(HL),
+  yaw:   new Float32Array(HL),
+  amag:  new Float32Array(HL),
+  ptr: 0
+};
+function pushH() {
+  const i = H.ptr % HL;
+  H.roll[i]  = S.roll;
+  H.pitch[i] = S.pitch;
+  H.yaw[i]   = S.yaw;
+  H.amag[i]  = Math.hypot(S.ax, S.ay, S.az);
+  H.ptr++;
+}
+function getH(arr, n) {
+  const d = new Array(n);
+  for (let i = 0; i < n; i++) d[i] = arr[(H.ptr - n + i + n * 10000) % HL];
+  return d;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SERIAL
+// ═══════════════════════════════════════════════════════════════
+let port=null, reader=null, buf='';
+
+async function toggleConnect() { S.connected ? await disc() : await conn(); }
+
+async function conn() {
+  try {
+    port = await navigator.serial.requestPort();
+    await port.open({baudRate: 115200});
+    S.connected = true; connUI(true); readLoop();
+  } catch(e) { notify('SERIAL ERROR: ' + e.message, 'red'); }
+}
+async function disc() {
+  try {
+    if (reader) { await reader.cancel(); reader = null; }
+    if (port)   { await port.close();    port   = null; }
+  } catch(e) {}
+  S.connected = false; connUI(false);
+}
+function connUI(on) {
+  const b = document.getElementById('connect-btn');
+  b.textContent = on ? 'DISCONNECT' : 'CONNECT';
+  b.className = 'connect-btn' + (on ? ' connected' : '');
+  $('dot-serial').className = 'dot' + (on ? ' active' : '');
+  $('dot-ekf').className    = 'dot' + (on ? ' active' : '');
+  $('no-sig').style.display = on ? 'none' : 'block';
+}
+async function readLoop() {
+  const dec = new TextDecoderStream();
+  port.readable.pipeTo(dec.writable);
+  reader = dec.readable.getReader();
+  try {
+    while (true) {
+      const {value, done} = await reader.read();
+      if (done) break;
+      buf += value;
+      let nl;
+      while ((nl = buf.indexOf('\n')) !== -1) {
+        parse(buf.slice(0, nl).trim());
+        buf = buf.slice(nl + 1);
+      }
+    }
+  } catch(e) {}
+}
+
+async function serialWrite(cmd) {
+  if (!port || !port.writable) return;
+  try {
+    const w = port.writable.getWriter();
+    await w.write(new TextEncoder().encode(cmd + '\n'));
+    w.releaseLock();
+  } catch(e) {}
+}
+
+// ═══════════════════════════════════════════════════════════════
+// PARSER  —  expects: G[gx gy gz] A[ax ay az] ANG[roll pitch yaw]
+//
+// Firmware (Mahony AHRS) outputs:
+//   ANG[0] = roll  ∈ [-180,+180]°  (accel-corrected, stable)
+//   ANG[1] = pitch ∈ [-90, +90]°   (accel-corrected, stable)
+//   ANG[2] = yaw   ∈ [-180,+180]°  (gyro only, bounded via atan2)
+//
+// BUG FIXED: old code did filtered_angles → Q.fromEuler → Q.toEuler → display.
+// That round-trip causes "odd transitions" because Q.toEuler flips roll sign
+// near ±180 (gimbal-lock boundaries), making the AngleLPF sweep 360° to track.
+// Fix: display values = filtered Euler angles directly.
+//      Quaternion built only for the 3D canvas render.
+// ═══════════════════════════════════════════════════════════════
+function parse(line) {
+  if (line.includes('CALIB:')) {
+    if (line.includes('CALIB:START')) {
+      $('dot-ekf').className = 'dot warn';
+    } else if (line.includes('CALIB:DONE')) {
+      $('dot-ekf').className = 'dot active';
+      const bm = line.match(/Bias:([-\d.]+),([-\d.]+),([-\d.]+)/);
+      if (bm) {
+        S.gyroBias.x = parseFloat(bm[1]);
+        S.gyroBias.y = parseFloat(bm[2]);
+        S.gyroBias.z = parseFloat(bm[3]);
+        $('bx').textContent = S.gyroBias.x.toFixed(3);
+        $('by').textContent = S.gyroBias.y.toFixed(3);
+        $('bz').textContent = S.gyroBias.z.toFixed(3);
+        lpf.gx.reset(0); lpf.gy.reset(0); lpf.gz.reset(0);
+        notify('STM32 CALIB DONE — bias updated', 'cyan');
+      }
+    }
+    return;
+  }
+
+  const gm = line.match(/G\[([^\]]+)\]/);
+  const am = line.match(/A\[([^\]]+)\]/);
+  const em = line.match(/ANG\[([^\]]+)\]/);
+  if (!gm || !am || !em) return;
+
+  const g = gm[1].trim().split(/[\s,]+/).map(Number);
+  const a = am[1].trim().split(/[\s,]+/).map(Number);
+  const e = em[1].trim().split(/[\s,]+/).map(Number);
+  if (g.length < 3 || a.length < 3 || e.length < 3) return;
+  if ([...g,...a,...e].some(isNaN)) return;
+
+  S.gx = lpf.gx.update(g[0] - S.gyroBias.x);
+  S.gy = lpf.gy.update(g[1] - S.gyroBias.y);
+  S.gz = lpf.gz.update(g[2] - S.gyroBias.z);
+  S.ax = lpf.ax.update(a[0]);
+  S.ay = lpf.ay.update(a[1]);
+  S.az = lpf.az.update(a[2]);
+
+  if (S.calActive) S.calSamples.push({x:g[0], y:g[1], z:g[2]});
+
+  // Yaw: firmware gives [-180,+180]; apply Z-offset then wrap to [0,360)
+  let rawYaw = e[2];
+  rawYaw = rawYaw - Math.floor((rawYaw + 180) / 360) * 360;
+  let displayYaw = rawYaw - S.yawOffset;
+  displayYaw = ((displayYaw % 360) + 360) % 360;
+
+  // Wrap-safe AngleLPF — no sweep-through-0 glitches ever
+  const filtRoll  = lpf.roll.update(e[0]);
+  const filtPitch = lpf.pitch.update(e[1]);
+  const filtYaw   = filterYaw(displayYaw);
+
+  // Display values taken DIRECTLY from filtered angles, not from Q.toEuler
+  S.roll  = filtRoll;
+  S.pitch = filtPitch;
+  S.yaw   = filtYaw;
+
+  // Quaternion only for 3D canvas render
+  S.tQ = Q.norm(Q.fromEuler(filtRoll, filtPitch, filtYaw));
+
+  S.pkts++;
+  const now = performance.now();
+  if (S.lastT) S.hz = Math.round(1000 / (now - S.lastT));
+  S.lastT = now;
+
+  pushH();
+  updateUI();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// UI UPDATE
+// ═══════════════════════════════════════════════════════════════
+function updateUI() {
+  const r=S.roll, p=S.pitch, y=S.yaw;
+
+  $('v-roll').textContent  = (r >= 0 ? '+' : '') + r.toFixed(2) + '°';
+  $('v-pitch').textContent = (p >= 0 ? '+' : '') + p.toFixed(2) + '°';
+  $('v-yaw').textContent   = y.toFixed(1).padStart(5,'0') + '°';
+  $('ov-r').textContent    = r.toFixed(1);
+  $('ov-p').textContent    = p.toFixed(1);
+  $('ov-y').textContent    = y.toFixed(1);
+
+  $('v-gx').textContent = S.gx.toFixed(2);
+  $('v-gy').textContent = S.gy.toFixed(2);
+  $('v-gz').textContent = S.gz.toFixed(2);
+  $('v-ax').textContent = S.ax.toFixed(3);
+  $('v-ay').textContent = S.ay.toFixed(3);
+  $('v-az').textContent = S.az.toFixed(3);
+  $('c-gx').textContent = S.gx.toFixed(1);
+  $('c-gy').textContent = S.gy.toFixed(1);
+  $('c-gz').textContent = S.gz.toFixed(1);
+  $('c-ax').textContent = S.ax.toFixed(3);
+  $('c-ay').textContent = S.ay.toFixed(3);
+  $('c-az').textContent = S.az.toFixed(3);
+
+  const am = Math.hypot(S.ax, S.ay, S.az);
+  const gm = Math.hypot(S.gx, S.gy, S.gz);
+  $('r-am').textContent = am.toFixed(4);
+  $('r-gm').textContent = gm.toFixed(2);
+  $('gg-r').textContent = r.toFixed(1) + '°';
+  $('gg-p').textContent = p.toFixed(1) + '°';
+  $('gg-y').textContent = y.toFixed(1) + '°';
+  $('gg-a').textContent = am.toFixed(3);
+  $('pkt-count').textContent = S.pkts;
+  $('hz-val').textContent    = S.hz;
+
+  // Roll gauge ±180°
+  gauge('gf-roll',  'gc-roll',  r, 180);
+  // Pitch gauge ±90°
+  gauge('gf-pitch', 'gc-pitch', p, 90);
+  // Yaw gauge 0–360 (linear fill)
+  const yp = y / 360 * 100;
+  const fy=$('gf-yaw'), cy2=$('gc-yaw');
+  if (fy)  { fy.style.left='0'; fy.style.width=yp+'%'; }
+  if (cy2) cy2.style.left = yp + '%';
+}
+
+function gauge(fid, cid, val, range) {
+  const pct = (val / range) * 50;
+  const f = $(fid), c = $(cid);
+  if (f) {
+    f.style.left  = pct >= 0 ? '50%' : (50 + pct) + '%';
+    f.style.width = Math.abs(pct) + '%';
+  }
+  if (c) c.style.left = Math.max(0, Math.min(100, 50 + pct)) + '%';
+}
+
+function $(id) { return document.getElementById(id); }
+
+// ═══════════════════════════════════════════════════════════════
+// 3D CANVAS
+// ═══════════════════════════════════════════════════════════════
+const canvas = $('c3d');
+const ctx = canvas.getContext('2d');
+function resize() {
+  const r = canvas.parentElement.getBoundingClientRect();
+  canvas.width  = r.width;
+  canvas.height = r.height - 34;
+}
+window.addEventListener('resize', resize);
+resize();
+
+function proj(v, cx, cy, fov=390) {
+  const s = fov / (fov + v.z);
+  return {x: cx + v.x * s, y: cy - v.y * s, s};
+}
+
+function draw3D() {
+  // ── Slerp render quaternion toward target ──
+  // This is the "display interpolator" — decoupled from serial rate
+  S.rQ = Q.slerp(S.rQ, S.tQ, RENDER_ALPHA);
+  const W=canvas.width, H=canvas.height;
+  ctx.clearRect(0, 0, W, H);
+  if      (S.view === '3d')      draw3DView(W, H);
+  else if (S.view === 'horizon') drawHorizon(W, H);
+  else                           drawCompassView(W, H);
+}
+
+// ── 3D DRONE MODEL ──────────────────────────────────────────────
+// BETAFLIGHT ORIENTATION:
+//   Body X = Roll axis   (right wing = +X)
+//   Body Y = Pitch axis  (nose      = +Y, i.e. forward)
+//   Body Z = Yaw axis    (up        = +Z)
+//
+// In the quaternion body frame, "forward" = +Y (nose direction)
+// When attitude = identity (0,0,0), nose points away from viewer (+Y into screen)
+// ─────────────────────────────────────────────────────────────────
+function draw3DView(W, H) {
+  const cx = W/2, cy = H/2;
+  // Pre-rotation: tilt model left 90° = rotate −90° around world Y-axis
+  // Q_pre = { w: cos(-45°), x:0, y: sin(-45°), z:0 } = { w:0.7071, x:0, y:-0.7071, z:0 }
+  const qPre = { w: 0.70710678, x: 0, y: -0.70710678, z: 0 };
+  const q = Q.norm(Q.mul(S.rQ, qPre));
+  const rot = v => Q.rot(q, v);
+  const pr  = v => proj(rot(v), cx, cy);
+
+  // Grid floor (world Y-down plane at y=-90)
+  ctx.save();
+  ctx.strokeStyle = 'rgba(0,229,255,0.05)';
+  ctx.lineWidth = .5;
+  const gs=50, gc2=8;
+  for (let i=-gc2; i<=gc2; i++) {
+    const a=pr({x:i*gs,y:-90,z:-gc2*gs}), b=pr({x:i*gs,y:-90,z:gc2*gs});
+    const c=pr({x:-gc2*gs,y:-90,z:i*gs}), d=pr({x:gc2*gs,y:-90,z:i*gs});
+    ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(c.x,c.y); ctx.lineTo(d.x,d.y); ctx.stroke();
+  }
+  ctx.restore();
+
+  // ── Central body box ──
+  const bx=22, by=9, bz=22;
+  const bvr = [
+    {x:-bx,y:-by,z:-bz},{x:bx,y:-by,z:-bz},{x:bx,y:-by,z:bz},{x:-bx,y:-by,z:bz},
+    {x:-bx,y: by,z:-bz},{x:bx,y: by,z:-bz},{x:bx,y: by,z:bz},{x:-bx,y: by,z:bz}
+  ].map(v => pr(v));
+  [[4,5,6,7,.14],[0,1,2,3,.08],[0,1,5,4,.07],[2,3,7,6,.07],[0,3,7,4,.06],[1,2,6,5,.06]].forEach(([a,b,c,d,al]) => {
+    ctx.beginPath();
+    ctx.moveTo(bvr[a].x, bvr[a].y);
+    [b,c,d].forEach(i => ctx.lineTo(bvr[i].x, bvr[i].y));
+    ctx.closePath();
+    ctx.fillStyle   = `rgba(0,229,255,${al})`;
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(0,229,255,0.4)';
+    ctx.lineWidth   = .8;
+    ctx.stroke();
+  });
+
+  // ── Arms: X-shape in XZ plane, body +Y = up ──
+  // Front-left = −X/−Z, Front-right = +X/−Z (−Z = toward viewer = nose)
+  // Using typical Betaflight motor numbering:
+  //   M1=FR(+X−Z cyan), M2=RL(−X+Z orange), M3=FL(−X−Z cyan), M4=RR(+X+Z orange)
+  const ARM=110, MR=30;
+  [
+    { x:+ARM, z:-ARM, col:'#00e5ff'  },  // Front-Right  (M1)
+    { x:-ARM, z:+ARM, col:'#ff6b35'  },  // Rear-Left    (M2)
+    { x:-ARM, z:-ARM, col:'#00e5ff'  },  // Front-Left   (M3)
+    { x:+ARM, z:+ARM, col:'#ff6b35'  },  // Rear-Right   (M4)
+  ].forEach(({x, z, col}) => {
+    const tip = {x, y:0, z};
+    const pO  = pr({x:0,y:0,z:0});
+    const pT  = pr(tip);
+    ctx.save();
+    ctx.strokeStyle = col; ctx.lineWidth = 3; ctx.globalAlpha = .85;
+    ctx.beginPath(); ctx.moveTo(pO.x, pO.y); ctx.lineTo(pT.x, pT.y); ctx.stroke();
+    ctx.globalAlpha = .9;
+    ctx.beginPath(); ctx.arc(pT.x, pT.y, MR*pT.s, 0, 2*Math.PI);
+    ctx.fillStyle = 'rgba(8,14,21,.92)'; ctx.fill();
+    ctx.strokeStyle = col; ctx.lineWidth = 1.5; ctx.stroke();
+    ctx.globalAlpha = .15;
+    ctx.strokeStyle = col; ctx.lineWidth = 13;
+    ctx.beginPath(); ctx.arc(pT.x, pT.y, MR*pT.s*.75, 0, 2*Math.PI); ctx.stroke();
+    ctx.globalAlpha = 1;
+    ctx.beginPath(); ctx.arc(pT.x, pT.y, 4*pT.s, 0, 2*Math.PI);
+    ctx.fillStyle = col; ctx.fill();
+    ctx.restore();
+  });
+
+  // ── Nose arrow: forward = −Z direction in body frame ──
+  // (in Betaflight, the drone "nose" faces the −Z body axis in this projection)
+  const noseWorld = rot({x:0, y:0, z:-ARM*.65});
+  const nose = proj(noseWorld, cx, cy);
+  ctx.save();
+  ctx.fillStyle = 'rgba(255,45,85,.92)';
+  ctx.beginPath();
+  ctx.moveTo(nose.x, nose.y - 9*nose.s);
+  ctx.lineTo(nose.x + 7*nose.s, nose.y + 5*nose.s);
+  ctx.lineTo(nose.x - 7*nose.s, nose.y + 5*nose.s);
+  ctx.closePath(); ctx.fill();
+  ctx.restore();
+
+  // ── World-frame axes (corner) ──
+  const axO = {x:50, y:H-45};
+  [
+    {v:{x:40,y:0,z:0},  c:'#ff2d55', l:'X'},
+    {v:{x:0,y:40,z:0},  c:'#00ff9d', l:'Y'},
+    {v:{x:0,y:0,z:-40}, c:'#00e5ff', l:'Z'}
+  ].forEach(({v,c,l}) => {
+    const rv = Q.rot(q, v);
+    ctx.save();
+    ctx.strokeStyle = c; ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(axO.x, axO.y);
+    ctx.lineTo(axO.x + rv.x*.5, axO.y - rv.y*.5);
+    ctx.stroke();
+    ctx.fillStyle = c;
+    ctx.font = '9px Space Mono';
+    ctx.fillText(l, axO.x + rv.x*.5 + 3, axO.y - rv.y*.5 + 3);
+    ctx.restore();
+  });
+
+  // ── Live Euler readout (top-right), from SLERPED quaternion ──
+  const eu = Q.toEuler(S.rQ);
+  ctx.save();
+  ctx.textAlign = 'right';
+  [
+    [`R: ${eu.roll .toFixed(1)}°`, '#00e5ff'],
+    [`P: ${eu.pitch.toFixed(1)}°`, '#ff6b35'],
+    [`Y: ${eu.yaw  .toFixed(1)}°`, '#00ff9d']
+  ].forEach(([t,c],i) => {
+    ctx.font = '11px Space Mono'; ctx.fillStyle = c;
+    ctx.fillText(t, W-14, 48 + i*18);
+  });
+  ctx.restore();
+}
+
+// ── ARTIFICIAL HORIZON ──────────────────────────────────────────
+function drawHorizon(W, H) {
+  const cx = W/2, cy = H/2;
+  const eu   = Q.toEuler(S.rQ);
+  // Betaflight convention: positive roll = right wing down (bank right)
+  // positive pitch = nose up
+  const roll  =  eu.roll;   // +right bank
+  const pitch =  eu.pitch;  // +nose up
+  const R = Math.min(W, H) * .42;
+
+  // Clip to circle
+  ctx.save();
+  ctx.beginPath(); ctx.arc(cx, cy, R, 0, 2*Math.PI); ctx.clip();
+  ctx.translate(cx, cy);
+  ctx.rotate(-roll * Math.PI / 180);
+  const py = pitch * 3.5;
+
+  // Sky
+  const sg = ctx.createLinearGradient(0, -R, 0, py);
+  sg.addColorStop(0, '#001830'); sg.addColorStop(1, '#003858');
+  ctx.fillStyle = sg; ctx.fillRect(-R, -R, R*2, R+py);
+
+  // Ground
+  const gg = ctx.createLinearGradient(0, py, 0, R);
+  gg.addColorStop(0, '#3a1800'); gg.addColorStop(1, '#180800');
+  ctx.fillStyle = gg; ctx.fillRect(-R, py, R*2, R);
+
+  // Horizon line
+  ctx.strokeStyle = 'rgba(0,229,255,.95)'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(-R, py); ctx.lineTo(R, py); ctx.stroke();
+
+  // Pitch ladder
+  for (let d = -40; d <= 40; d += 10) {
+    if (d === 0) continue;
+    const y2 = py - d * 3.5;
+    if (Math.abs(y2) > R) continue;
+    const w2 = d % 20 === 0 ? 70 : 42;
+    ctx.strokeStyle = 'rgba(200,220,235,.6)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(-w2, y2); ctx.lineTo(w2, y2); ctx.stroke();
+    ctx.fillStyle = 'rgba(200,220,235,.7)';
+    ctx.font = '10px Space Mono';
+    ctx.textAlign = 'left';  ctx.fillText(d+'°',  w2+5, y2+4);
+    ctx.textAlign = 'right'; ctx.fillText(d+'°', -w2-5, y2+4);
+  }
+  ctx.restore();
+
+  // Fixed crosshair wings
+  ctx.save(); ctx.translate(cx, cy);
+  ctx.strokeStyle = '#00e5ff'; ctx.lineWidth = 2;
+  [-1,1].forEach(s => {
+    ctx.beginPath(); ctx.moveTo(s*16,0); ctx.lineTo(s*80,0); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(s*80,0); ctx.lineTo(s*80,18); ctx.stroke();
+  });
+  ctx.beginPath(); ctx.arc(0,0,5,0,2*Math.PI);
+  ctx.fillStyle = '#00e5ff'; ctx.fill();
+  ctx.restore();
+
+  // Horizon circle border
+  ctx.save();
+  ctx.beginPath(); ctx.arc(cx,cy,R,0,2*Math.PI);
+  ctx.strokeStyle='rgba(0,229,255,.35)'; ctx.lineWidth=2; ctx.stroke();
+  ctx.restore();
+
+  // Roll arc ticks
+  ctx.save(); ctx.translate(cx, cy);
+  for (let d = -60; d <= 60; d += 10) {
+    const a = (d - 90) * Math.PI/180;
+    const inner = d === 0 ? R-9 : R-5;
+    ctx.strokeStyle = d === 0 ? '#00e5ff' : 'rgba(0,229,255,.4)';
+    ctx.lineWidth   = d === 0 ? 2 : 1;
+    ctx.beginPath();
+    ctx.moveTo(Math.cos(a)*(R-1), Math.sin(a)*(R-1));
+    ctx.lineTo(Math.cos(a)*inner, Math.sin(a)*inner);
+    ctx.stroke();
+  }
+  // Roll pointer (rotates with roll)
+  const rpa = (-roll - 90) * Math.PI/180;
+  ctx.fillStyle = '#00e5ff';
+  ctx.beginPath();
+  ctx.moveTo(Math.cos(rpa)*(R-15), Math.sin(rpa)*(R-15));
+  ctx.lineTo(Math.cos(rpa-.06)*(R-1), Math.sin(rpa-.06)*(R-1));
+  ctx.lineTo(Math.cos(rpa+.06)*(R-1), Math.sin(rpa+.06)*(R-1));
+  ctx.closePath(); ctx.fill();
+  ctx.restore();
+}
+
+// ── COMPASS VIEW ─────────────────────────────────────────────────
+function drawCompassView(W, H) {
+  const cx = W/2, cy = H/2;
+  const eu  = Q.toEuler(S.rQ);
+  const yaw = eu.yaw;
+  const R = Math.min(W, H) * .38;
+
+  ctx.save(); ctx.translate(cx, cy);
+
+  // Outer glow ring
+  ctx.beginPath(); ctx.arc(0,0,R+4,0,2*Math.PI);
+  ctx.strokeStyle='rgba(0,229,255,.18)'; ctx.lineWidth=8; ctx.stroke();
+  ctx.beginPath(); ctx.arc(0,0,R,0,2*Math.PI);
+  ctx.strokeStyle='rgba(0,229,255,.4)';  ctx.lineWidth=1.5; ctx.stroke();
+
+  // Degree ticks (rose rotates with yaw)
+  for (let i = 0; i < 36; i++) {
+    const a   = (i*10 - yaw) * Math.PI/180;
+    const maj = i % 9 === 0;
+    const mid = i % 3 === 0;
+    const inner = maj ? R*.72 : mid ? R*.80 : R*.87;
+    ctx.strokeStyle = maj ? 'rgba(0,229,255,.9)' : 'rgba(0,229,255,.3)';
+    ctx.lineWidth   = maj ? 2 : 1;
+    ctx.beginPath();
+    ctx.moveTo(Math.sin(a)*R*.93, -Math.cos(a)*R*.93);
+    ctx.lineTo(Math.sin(a)*inner, -Math.cos(a)*inner);
+    ctx.stroke();
+    if (mid && !maj) {
+      const lx =  Math.sin(a)*R*.64;
+      const ly = -Math.cos(a)*R*.64;
+      ctx.fillStyle = 'rgba(0,229,255,.4)';
+      ctx.font = '9px Space Mono';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(i*10, lx, ly);
+    }
+  }
+
+  // Cardinals (rotate with compass rose)
+  [['N',0,'#ff2d55'],['E',90,'rgba(0,229,255,.9)'],['S',180,'rgba(0,229,255,.9)'],['W',270,'rgba(0,229,255,.9)']].forEach(([l,d,c]) => {
+    const a  = (d - yaw) * Math.PI/180;
+    const x  =  Math.sin(a)*R*.52;
+    const y2 = -Math.cos(a)*R*.52;
+    ctx.fillStyle = c;
+    ctx.font = 'bold 18px Rajdhani';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(l, x, y2);
+  });
+
+  // Fixed aircraft symbol (always points up = current heading)
+  ctx.strokeStyle = 'rgba(0,229,255,.9)'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(0,-22); ctx.lineTo(0,22);   ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(-36,5); ctx.lineTo(36,5);   ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(-14,18);ctx.lineTo(14,18);  ctx.stroke();
+
+  // Digital heading
+  ctx.fillStyle = '#00e5ff';
+  ctx.font = 'bold 28px Space Mono';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(Math.round(yaw).toString().padStart(3,'0')+'°', 0, R*.3);
+  ctx.restore();
+
+  // Fixed north pointer above compass
+  ctx.save(); ctx.translate(cx, cy - R*1.08);
+  ctx.fillStyle = '#ff2d55';
+  ctx.beginPath(); ctx.moveTo(0,-9); ctx.lineTo(7,6); ctx.lineTo(-7,6); ctx.closePath(); ctx.fill();
+  ctx.restore();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// GRAPHS
+// ═══════════════════════════════════════════════════════════════
+function drawGraph(id, arr, color) {
+  const c = $(id); if (!c) return;
+  const wrap = c.parentElement;
+  c.width = wrap.clientWidth; c.height = wrap.clientHeight;
+  const W=c.width, H=c.height, gc=c.getContext('2d');
+  gc.clearRect(0,0,W,H);
+  const data = getH(arr, HL);
+  let lo=Infinity, hi=-Infinity;
+  data.forEach(v => { if(v<lo) lo=v; if(v>hi) hi=v; });
+  if (hi-lo < 0.5) { lo -= 1; hi += 1; }
+  const range = hi - lo;
+  // Zero line
+  if (lo < 0 && hi > 0) {
+    const zy = H - (-lo/range)*H;
+    gc.strokeStyle = 'rgba(255,255,255,.07)'; gc.lineWidth = .5;
+    gc.beginPath(); gc.moveTo(0,zy); gc.lineTo(W,zy); gc.stroke();
+  }
+  // Grid
+  gc.strokeStyle = 'rgba(14,32,48,.9)'; gc.lineWidth = .5;
+  for (let g=0; g<=3; g++) { const y=H*g/3; gc.beginPath(); gc.moveTo(0,y); gc.lineTo(W,y); gc.stroke(); }
+  // Fill
+  const grad = gc.createLinearGradient(0,0,0,H);
+  grad.addColorStop(0, color+'55'); grad.addColorStop(1, color+'00');
+  gc.beginPath();
+  data.forEach((v,i) => {
+    const x=i/(HL-1)*W, y=H-((v-lo)/range)*H;
+    i===0 ? gc.moveTo(x,y) : gc.lineTo(x,y);
+  });
+  gc.lineTo(W,H); gc.lineTo(0,H); gc.closePath();
+  gc.fillStyle = grad; gc.fill();
+  // Line
+  gc.beginPath();
+  data.forEach((v,i) => {
+    const x=i/(HL-1)*W, y=H-((v-lo)/range)*H;
+    i===0 ? gc.moveTo(x,y) : gc.lineTo(x,y);
+  });
+  gc.strokeStyle = color; gc.lineWidth = 1.5; gc.stroke();
+  // Endpoint dot
+  const lv=data[HL-1], ly2=H-((lv-lo)/range)*H;
+  gc.beginPath(); gc.arc(W-1, ly2, 3, 0, 2*Math.PI);
+  gc.fillStyle = color; gc.fill();
+}
+
+function drawMini(id, arr, color) {
+  const c = $(id); if (!c) return;
+  const p = c.parentElement;
+  c.width = p.clientWidth; c.height = p.clientHeight;
+  const W=c.width, H=c.height, gc=c.getContext('2d');
+  gc.clearRect(0,0,W,H);
+  const n=80, data=getH(arr, n);
+  let lo=Infinity, hi=-Infinity;
+  data.forEach(v => { if(v<lo) lo=v; if(v>hi) hi=v; });
+  if (hi-lo < .5) { lo -= .5; hi += .5; }
+  gc.beginPath();
+  data.forEach((v,i) => {
+    const x=i/(n-1)*W, y=H-((v-lo)/(hi-lo))*H;
+    i===0 ? gc.moveTo(x,y) : gc.lineTo(x,y);
+  });
+  gc.strokeStyle = color+'99'; gc.lineWidth = 1; gc.stroke();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// CALIBRATION
+// ═══════════════════════════════════════════════════════════════
+let calTick = null;
+
+function showCal(title, msg, ms, done) {
+  $('cal-t').textContent = title;
+  $('cal-m').textContent = msg;
+  $('cal-b').style.width = '0%';
+  $('cal-overlay').classList.add('show');
+  const t0 = Date.now();
+  clearInterval(calTick);
+  calTick = setInterval(() => {
+    const p = Math.min(100, (Date.now()-t0)/ms*100);
+    $('cal-b').style.width = p + '%';
+    if (p >= 100) { clearInterval(calTick); if (done) done(); }
+  }, 50);
+}
+
+function closeCalModal() {
+  $('cal-overlay').classList.remove('show');
+  clearInterval(calTick);
+  S.calActive   = false;
+  S.calSamples  = [];
+}
+
+function calGyro() {
+  const btn = $('b-gyro'); btn.className = 'ctrl-btn cal-running';
+  S.calActive = true; S.calSamples = [];
+  serialWrite('CAL_GYRO');
+  showCal('GYRO CALIBRATION', 'Place vehicle perfectly still.\nCollecting bias samples (200+ packets)...', 4000, () => {
+    S.calActive = false;
+    if (S.calSamples.length > 10) {
+      const n = S.calSamples.length;
+      S.gyroBias.x = S.calSamples.reduce((s,v)=>s+v.x,0)/n;
+      S.gyroBias.y = S.calSamples.reduce((s,v)=>s+v.y,0)/n;
+      S.gyroBias.z = S.calSamples.reduce((s,v)=>s+v.z,0)/n;
+      // Reset LPF states after bias change
+      lpf.gx.reset(0); lpf.gy.reset(0); lpf.gz.reset(0);
+    }
+    S.calSamples = [];
+    $('bx').textContent = S.gyroBias.x.toFixed(3);
+    $('by').textContent = S.gyroBias.y.toFixed(3);
+    $('bz').textContent = S.gyroBias.z.toFixed(3);
+    $('cal-m').textContent = `Bias: X=${S.gyroBias.x.toFixed(3)} Y=${S.gyroBias.y.toFixed(3)} Z=${S.gyroBias.z.toFixed(3)}\nBias applied to all future readings.`;
+    btn.className = 'ctrl-btn active';
+    setTimeout(() => btn.className='ctrl-btn', 3000);
+  });
+}
+
+function calAccel() {
+  const btn = $('b-accel'); btn.className = 'ctrl-btn cal-running';
+  serialWrite('CAL_ACCEL');
+  showCal('ACCEL CALIBRATION', 'Place vehicle LEVEL on flat surface.\nSending CAL_ACCEL command to FC...', 3000, () => {
+    $('cal-m').textContent = 'Accel calibration command sent.\nRestart FC if required.';
+    btn.className = 'ctrl-btn';
+  });
+}
+
+function calMag() {
+  const btn = $('b-mag'); btn.className = 'ctrl-btn cal-running';
+  serialWrite('CAL_MAG');
+  showCal('MAGNETOMETER CALIBRATION', 'Slowly rotate vehicle in figure-8 pattern\non all 3 axes for 10 seconds.\nSending CAL_MAG to FC...', 10000, () => {
+    serialWrite('CAL_MAG_END');
+    $('cal-m').textContent = 'Mag calibration complete.\nSoft-iron & hard-iron correction sent.';
+    $('dot-mag').className = 'dot active';
+    btn.className = 'ctrl-btn';
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════
+// RESET Z-AXIS  (Betaflight behaviour, exactly)
+//
+// Betaflight's "Reset Z-axis" (in the sensors tab) does:
+//   1. Records the current integrated yaw heading as the new "zero"
+//   2. All subsequent display yaw = (rawYaw − offset), wrapped [0,360)
+//   3. The quaternion display immediately snaps to 000°
+//   4. Sends command to FC (optional — some FCs support it)
+//
+// Our implementation:
+//   S.yawOffset is the sensor's *current raw yaw* at reset time.
+//   Every frame: displayYaw = (sensorYaw − S.yawOffset + 360) % 360
+// ═══════════════════════════════════════════════════════════════
+function resetZAxis() {
+  S.yawOffset = S.yaw + S.yawOffset;
+  S.yawOffset = S.yawOffset - Math.floor((S.yawOffset + 180) / 360) * 360;
+
+  // Reset yaw AngleLPF to 0° instantly (no lag after reset)
+  lpf.yaw.reset(0);
+
+  // Rebuild quaternion at yaw=0, preserve roll/pitch
+  S.tQ = Q.norm(Q.fromEuler(S.roll, S.pitch, 0));
+  S.rQ = Q.norm(Q.fromEuler(S.roll, S.pitch, 0));
+  S.yaw = 0;
+
+  const btn = $('b-resetz');
+  btn.className = 'ctrl-btn reset-z flash';
+  setTimeout(() => btn.className = 'ctrl-btn reset-z', 800);
+  serialWrite('RESET_YAW');
+  notify('Z-AXIS RESET — HEADING 000°', 'cyan');
+}
+
+// ═══════════════════════════════════════════════════════════════
+// LPF TUNING  — live slider control
+// ═══════════════════════════════════════════════════════════════
+function setLpfAlpha(val) {
+  // Map slider 1-9 to alpha 0.60 (fast) → 0.05 (smooth) — roll & pitch ONLY
+  // Yaw alpha is NOT changed here: yaw has no accel correction on STM32,
+  // lowering its alpha makes it appear stuck at 0.
+  const alphas = [0.60, 0.50, 0.40, 0.35, 0.25, 0.18, 0.12, 0.08, 0.05];
+  const a = alphas[parseInt(val) - 1];
+  lpf.roll.a  = a;
+  lpf.pitch.a = a;
+  $('lpf-label').textContent = 'α = ' + a.toFixed(2) + ' (roll/pitch)';
+}
+
+
+
+// Legacy alias kept for any old references
+function resetYaw() { resetZAxis(); }
+
+function resetAll() {
+  S.yawOffset = 0;
+  S.gyroBias  = {x:0,y:0,z:0};
+  S.tQ = Q.id(); S.rQ = Q.id();
+  S.roll=0; S.pitch=0; S.yaw=0;
+  // Reset all LPF states using their respective APIs
+  lpf.roll.reset(0); lpf.pitch.reset(0); lpf.yaw.reset(0);
+  lpf.gx.reset(0); lpf.gy.reset(0); lpf.gz.reset(0);
+  lpf.ax.reset(0); lpf.ay.reset(0); lpf.az.reset(1); // az=1g at rest
+  H.ptr=0; H.roll.fill(0); H.pitch.fill(0); H.yaw.fill(0); H.amag.fill(0);
+  $('bx').textContent='0.000'; $('by').textContent='0.000'; $('bz').textContent='0.000';
+  $('lpf-slider').value = 4; setLpfAlpha(4);
+  serialWrite('RESET_ALL');
+  notify('ALL AXES, BIAS & HISTORY RESET');
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SIMULATION — realistic 50 Hz drone motion to verify orientation
+// ═══════════════════════════════════════════════════════════════
+let simT=0, simIv=null;
+function toggleSim() {
+  S.simulating = !S.simulating;
+  const btn = $('b-sim');
+  if (S.simulating) {
+    btn.className = 'ctrl-btn active';
+    $('no-sig').style.display = 'none';
+    simIv = setInterval(simTick, 20);
+  } else {
+    btn.className = 'ctrl-btn';
+    clearInterval(simIv);
+  }
+}
+function simTick() {
+  simT += 0.02;
+  // Smooth drone-like combined motion at 50 Hz
+  const roll  = Math.sin(simT * .55) * 38 + Math.sin(simT*1.4+.5) * 7;
+  const pitch = Math.sin(simT * .38+.9) * 28 + Math.cos(simT*1.1) * 5;
+  const yaw   = ((simT * 18) % 360 + 360) % 360;
+
+  // Simulate raw IMU (with some noise)
+  const noise = () => (Math.random()-.5) * 0.4;
+  const rawGx = Math.sin(simT*1.0)*4.2 + noise();
+  const rawGy = Math.cos(simT*.75)*2.8 + noise();
+  const rawGz = 1.1 + noise();
+
+  // Run through LPF (simulates real pipeline)
+  S.gx = lpf.gx.update(rawGx - S.gyroBias.x);
+  S.gy = lpf.gy.update(rawGy - S.gyroBias.y);
+  S.gz = lpf.gz.update(rawGz - S.gyroBias.z);
+
+  const rawAx = Math.sin(pitch*Math.PI/180) * .1 + noise()*.005;
+  const rawAy = -Math.sin(roll*Math.PI/180) * .08 + noise()*.005;
+  const rawAz = Math.sqrt(Math.max(0, 1 - rawAx*rawAx - rawAy*rawAy));
+  S.ax = lpf.ax.update(rawAx);
+  S.ay = lpf.ay.update(rawAy);
+  S.az = lpf.az.update(rawAz);
+
+  // Apply yaw offset (simulates what parser does)
+  const filtRoll  = lpf.roll.update(roll);
+  const filtPitch = lpf.pitch.update(pitch);
+  let   displayYaw = yaw - S.yawOffset;
+  displayYaw = ((displayYaw % 360) + 360) % 360;
+  const filtYaw = filterYaw(displayYaw);
+
+  // Display values directly from filtered angles (no Q.toEuler round-trip)
+  S.roll=filtRoll; S.pitch=filtPitch; S.yaw=filtYaw;
+  S.tQ = Q.norm(Q.fromEuler(filtRoll, filtPitch, filtYaw));
+
+  S.pkts++; S.hz=50;
+  pushH(); updateUI();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// NOTIFICATIONS
+// ═══════════════════════════════════════════════════════════════
+let notifEl=null, notifT=null;
+function notify(msg, col='cyan') {
+  if (!notifEl) {
+    notifEl = document.createElement('div');
+    notifEl.style.cssText = [
+      'position:fixed','bottom:24px','left:50%','transform:translateX(-50%)',
+      'padding:10px 28px','font-family:var(--font-mono)','font-size:11px',
+      'letter-spacing:3px','z-index:9998',
+      "clip-path:polygon(8px 0%,100% 0%,calc(100% - 8px) 100%,0% 100%)",
+      'transition:opacity .4s'
+    ].join(';');
+    document.body.appendChild(notifEl);
+  }
+  const c = col==='red' ? 'var(--red)' : 'var(--cyan)';
+  notifEl.style.background = col==='red' ? 'rgba(255,45,85,.15)' : 'rgba(0,229,255,.13)';
+  notifEl.style.border  = `1px solid ${c}`;
+  notifEl.style.color   = c;
+  notifEl.textContent   = msg;
+  notifEl.style.opacity = '1';
+  clearTimeout(notifT);
+  notifT = setTimeout(() => notifEl.style.opacity='0', 3000);
+}
+
+function setView(v) {
+  S.view = v;
+  document.querySelectorAll('.view-tab').forEach((t,i) =>
+    t.classList.toggle('active', ['3d','horizon','compass'][i] === v)
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════
+// RENDER LOOP — 60 fps, fully decoupled from serial rate
+// ═══════════════════════════════════════════════════════════════
+let frame = 0;
+(function loop() {
+  draw3D();
+  frame++;
+  if (frame % 2 === 0) {
+    drawGraph('g-roll',  H.roll,  '#00e5ff');
+    drawGraph('g-pitch', H.pitch, '#ff6b35');
+    drawGraph('g-yaw',   H.yaw,   '#00ff9d');
+    drawGraph('g-amag',  H.amag,  '#00ff9d');
+    drawMini('m-roll',   H.roll,  '#00e5ff');
+    drawMini('m-pitch',  H.pitch, '#ff6b35');
+    drawMini('m-yaw',    H.yaw,   '#00ff9d');
+  }
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
